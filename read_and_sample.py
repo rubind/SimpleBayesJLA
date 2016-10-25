@@ -1,6 +1,8 @@
 import pystan
 import cPickle as pickle
 from numpy import *
+from matplotlib import use
+use("PDF")
 import matplotlib.pyplot as plt
 from FileRead import readcol
 import pyfits
