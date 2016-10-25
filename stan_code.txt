@@ -1,0 +1,151 @@
+functions {
+    vector vecpow(vector v, real p) {
+        return exp(log(v)*p);
+    }
+
+    vector sinn(vector r, real Ok, int nel) {
+        vector [nel] newr;
+
+        if (abs(Ok) < 1e-8) {
+            newr <- r;
+        }
+        if (Ok > 0) {
+            for (i in 1:nel) {
+                newr[i] <- sinh(r[i]*sqrt(Ok))/sqrt(Ok);
+            }
+        }
+        if (Ok < 0) {
+            for (i in 1:nel) {
+                newr[i] <- sin(r[i]*sqrt(-Ok))/sqrt(-Ok);
+            }
+        }
+        return newr;
+    }
+}
+
+data {
+    int<lower=0> n_sne; // Number of SNe
+    //int<lower=0> n_samples; // Number of SN samples
+    int<lower=0> n_calib; // Number of distance uncertainty systematics (e.g., zeropoints)
+    //int n_x1c_star; // Number of redshift nodes per sample
+
+    //int sample_list[n_sne]; // Which sample each SN is in
+    vector <lower=0> [n_sne] zhelio; // The redshift for each SN. Union2.1 used z_CMB, but this could be improved
+    //matrix [n_sne, n_x1c_star] redshift_coeffs; // How each SN depends on each node.
+
+
+    vector[3] obs_mBx1c [n_sne]; // SALT2 fits
+    matrix[3,3] obs_mBx1c_cov [n_sne]; // Covariance of SALT2 fits
+    matrix[3, n_calib] d_mBx1c_d_calib [n_sne]; // Sensitivity of each SN to each distance systematic
+    vector [n_sne] obs_mass;
+    vector [n_sne] obs_dmass;
+
+    int nzadd; // Integrating comoving distance using Simpson's rule. Add these redshifts to make sure that we have good sampling in redshift.  
+    vector [2*(n_sne + nzadd) - 1] redshifts_sort_fill; // Each SN redshift is a point for Simpson's rule. Fill in with intermediate points.
+    int unsort_inds[n_sne + nzadd]; // For converting to SN index.
+
+    int cosmomodel; // 1 = Omega_m/Omega_L, 2 = Flat
+}
+
+parameters {
+    real <lower = -20, upper = -18.> MB;
+
+    real alpha;
+    real beta;
+    real delta;
+
+    real <lower = 0> Om;
+    real OL;
+    
+
+    real <lower = 0> sigma_M0;
+    real <lower = 0> sigma_x10;
+    real <lower = 0> sigma_c0;
+
+    real M0;
+    real x10;
+    real c0;
+
+    vector [n_sne] true_x1;
+    vector [n_sne] true_c;
+
+
+    //matrix [n_samples, n_x1c_star] x1_star;
+    //matrix [n_samples, n_x1c_star] c_star;
+
+    vector [n_calib] calibs;
+}
+
+transformed parameters {
+    vector [3] model_mBx1c [n_sne];
+    matrix [3,3] model_mBx1c_cov [n_sne];
+    real Ok;
+
+
+    vector [2*(n_sne + nzadd) - 1] Hinv_sort_fill;
+    vector [n_sne + nzadd] r_com_sort;
+    vector [n_sne] model_mu;
+
+    // -------------Begin numerical integration-----------------
+
+    Ok <- 1. - Om - OL;
+
+    if (cosmomodel == 1) {
+        Hinv_sort_fill <- vecpow(Om*vecpow(1. + redshifts_sort_fill, 3.) + OL + Ok*vecpow(1. + redshifts_sort_fill, 2.), -0.5);
+    }
+    if (cosmomodel == 2) {
+        Hinv_sort_fill <- vecpow(Om*vecpow(1. + redshifts_sort_fill, 3.) + (1. - Om), -0.5);
+    }
+
+    r_com_sort[1] <- 0.; // Redshift = 0 should be first element!
+    for (i in 2:(n_sne + nzadd)) {
+        r_com_sort[i] <- r_com_sort[i - 1] + (Hinv_sort_fill[2*i - 3] + 4.*Hinv_sort_fill[2*i - 2] + Hinv_sort_fill[2*i - 1])*(redshifts_sort_fill[2*i - 1] - redshifts_sort_fill[2*i - 3])/6.;
+    }
+
+    r_com_sort <- sinn(r_com_sort, Ok, n_sne + nzadd);
+
+    for (i in 1:n_sne) {
+        model_mu[i] <- 5.*log10((1. + zhelio[i])*r_com_sort[unsort_inds[i] + 1]) + 43.1586133146; // Heliocentric is correct here
+    }
+
+    // -------------End numerical integration---------------
+
+
+
+
+    for (i in 1:n_sne) {
+
+	// Building the model of the observations
+        model_mBx1c[i][1] <- -(alpha*true_x1[i] - beta*true_c[i] - M0 - model_mu[i] + delta*normal_cdf(obs_mass[i], 10, obs_dmass[i]));
+        model_mBx1c[i][2] <- true_x1[i];
+        model_mBx1c[i][3] <- true_c[i];
+
+	model_mBx1c[i] <- model_mBx1c[i] + d_mBx1c_d_calib[i] * calibs;
+
+	// Building the covariance model
+        model_mBx1c_cov[i] <- obs_mBx1c_cov[i];
+        model_mBx1c_cov[i][1,1] <- obs_mBx1c_cov[i][1,1] + sigma_M0^2;
+
+	// Builing the shape and color population model
+        //x1_star_by_SN[i] <- dot_product(x1_star[sample_list[i]], redshift_coeffs[i]);
+        //R_x1_by_SN[i] <- R_x1[sample_list[i]];
+    }
+
+}
+
+model {
+    for (i in 1:n_sne) {
+        obs_mBx1c[i] ~ multi_normal(model_mBx1c[i], model_mBx1c_cov[i]);
+    }
+
+    true_x1 ~ normal(x10, sigma_x10);
+    true_c ~ normal(c0, sigma_c0);
+
+    calibs ~ normal(0, 1);
+
+    if (cosmomodel == 2) {
+        // Flat universe
+        OL ~ normal(0, 0.01);
+    }
+
+}
