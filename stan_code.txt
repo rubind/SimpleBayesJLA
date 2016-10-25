@@ -25,13 +25,11 @@ functions {
 
 data {
     int<lower=0> n_sne; // Number of SNe
-    //int<lower=0> n_samples; // Number of SN samples
     int<lower=0> n_calib; // Number of distance uncertainty systematics (e.g., zeropoints)
-    //int n_x1c_star; // Number of redshift nodes per sample
+    int n_x1c_star; // Number of redshift nodes per sample
 
-    //int sample_list[n_sne]; // Which sample each SN is in
     vector <lower=0> [n_sne] zhelio; // The redshift for each SN. Union2.1 used z_CMB, but this could be improved
-    //matrix [n_sne, n_x1c_star] redshift_coeffs; // How each SN depends on each node.
+    matrix [n_sne, n_x1c_star] redshift_coeffs; // How each SN depends on each node.
 
 
     vector[3] obs_mBx1c [n_sne]; // SALT2 fits
@@ -48,8 +46,6 @@ data {
 }
 
 parameters {
-    real <lower = -20, upper = -18.> MB;
-
     real alpha;
     real beta;
     real delta;
@@ -63,8 +59,8 @@ parameters {
     real <lower = 0> sigma_c0;
 
     real M0;
-    real x10;
-    real c0;
+    vector [n_x1c_star] x10;
+    vector [n_x1c_star] c0;
 
     vector [n_sne] true_x1;
     vector [n_sne] true_c;
@@ -85,6 +81,9 @@ transformed parameters {
     vector [2*(n_sne + nzadd) - 1] Hinv_sort_fill;
     vector [n_sne + nzadd] r_com_sort;
     vector [n_sne] model_mu;
+
+    vector [n_sne] x10_by_SN;
+    vector [n_sne] c0_by_SN;
 
     // -------------Begin numerical integration-----------------
 
@@ -111,6 +110,8 @@ transformed parameters {
     // -------------End numerical integration---------------
 
 
+    x10_by_SN <- redshift_coeffs * x10;
+    c0_by_SN <- redshift_coeffs * c0;
 
 
     for (i in 1:n_sne) {
@@ -125,10 +126,6 @@ transformed parameters {
 	// Building the covariance model
         model_mBx1c_cov[i] <- obs_mBx1c_cov[i];
         model_mBx1c_cov[i][1,1] <- obs_mBx1c_cov[i][1,1] + sigma_M0^2;
-
-	// Builing the shape and color population model
-        //x1_star_by_SN[i] <- dot_product(x1_star[sample_list[i]], redshift_coeffs[i]);
-        //R_x1_by_SN[i] <- R_x1[sample_list[i]];
     }
 
 }
@@ -138,8 +135,8 @@ model {
         obs_mBx1c[i] ~ multi_normal(model_mBx1c[i], model_mBx1c_cov[i]);
     }
 
-    true_x1 ~ normal(x10, sigma_x10);
-    true_c ~ normal(c0, sigma_c0);
+    true_x1 ~ normal(x10_by_SN, sigma_x10);
+    true_c ~ normal(c0_by_SN, sigma_c0);
 
     calibs ~ normal(0, 1);
 
