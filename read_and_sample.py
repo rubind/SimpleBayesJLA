@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from FileRead import readcol
 import pyfits
 from DavidsNM import save_img
+import sys
 
 def get_redshifts(redshifts):
     appended_redshifts = arange(0., 2.51, 0.1)
@@ -46,8 +47,10 @@ def get_redshift_coeffs(zcmb, SNset, popmodel):
         
 
 
-cosmomodel = 1 # 1 = Om/OL, 2 = FlatLCDM
-popmodel = 3 # 1 = const, 2 = const by sample, 3 = linear by sample
+cosmomodel = int(sys.argv[1]) # 1 = Om/OL, 2 = FlatLCDM
+popmodel = int(sys.argv[2]) # 1 = const, 2 = const by sample, 3 = linear by sample
+nMCMCchains = int(sys.argv[3])
+nMCMCsamples = int(sys.argv[4])
 
 
 [NA, zcmb, zhel, dz, mb, dmb, x1, dx1, color, dcolor, mass, dmass, cov_m_s, cov_m_c, cov_s_c, SNset] = readcol("covmat/jla_lcparams.txt", 'a,fff,ff,ff,ff,ff,fff,i')
@@ -114,7 +117,7 @@ plt.savefig("mass.pdf")
 plt.close()
 
 fit = pystan.stan(file = "stan_code.txt", data=stan_data,
-                  iter=1000, chains=4, n_jobs = 4, refresh = 5)
+                  iter=nMCMCsamples, chains=nMCMCchains, n_jobs = nMCMCchains, refresh = 100)
 
 
 print fit
