@@ -53,8 +53,8 @@ nMCMCchains = int(sys.argv[3])
 nMCMCsamples = int(sys.argv[4])
 
 
-[NA, zcmb, zhel, dz, mb, dmb, x1, dx1, color, dcolor, mass, dmass, cov_m_s, cov_m_c, cov_s_c, SNset] = readcol("covmat/jla_lcparams.txt", 'a,fff,ff,ff,ff,ff,fff,i')
-[sigma_coh, sigma_lens, sigma_z] = readcol("covmat/sigma_mu.txt", 'fff')
+[NA, zcmb, zhel, dz, mb, dmb, x1, dx1, color, dcolor, mass, dmass, cov_m_s, cov_m_c, cov_s_c, SNset] = readcol("../covmat/jla_lcparams.txt", 'a,fff,ff,ff,ff,ff,fff,i')
+[sigma_coh, sigma_lens, sigma_z] = readcol("../covmat/sigma_mu.txt", 'fff')
 
 assert all(abs(sigma_z - zcmb) < 0.02)
 
@@ -64,7 +64,7 @@ plt.plot(zcmb, dmb, '.')
 plt.savefig("tmp.pdf")
 plt.close()
 
-f = pyfits.open("covmat/d_mBx1c_dsys.fits")
+f = pyfits.open("../covmat/d_mBx1c_dsys.fits")
 d_mBx1c_dsys = f[0].data
 f.close()
 
@@ -116,7 +116,7 @@ plt.hist(dmass, bins = 20)
 plt.savefig("mass.pdf")
 plt.close()
 
-fit = pystan.stan(file = "stan_code.txt", data=stan_data,
+fit = pystan.stan(file = "../stan_code.txt", data=stan_data,
                   iter=nMCMCsamples, chains=nMCMCchains, n_jobs = nMCMCchains, refresh = 100)
 
 
