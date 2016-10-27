@@ -8,6 +8,7 @@ from FileRead import readcol
 import pyfits
 from DavidsNM import save_img
 import sys
+from scipy.interpolate import interp1d
 
 def get_redshifts(redshifts):
     appended_redshifts = arange(0., 2.51, 0.1)
@@ -30,20 +31,30 @@ def get_redshift_coeffs(zcmb, SNset, popmodel):
         for i, id in enumerate(unique(SNset)):
             redshift_coeffs[:,i] = (SNset == id)
 
-    if popmodel == 3:
-        redshift_coeffs = zeros([len(zcmb), len(unique(SNset))*2 - 1], dtype=float64)
-        assert sum(SNset == 4) < 30 # Just checkin that SNset 4 is HST SNe
+    if popmodel > 2:
+        npersample = popmodel - 1
 
-        for i, id in enumerate(unique(SNset)):
+        redshift_coeffs = zeros([len(zcmb), len(unique(SNset))*npersample - 1], dtype=float64)
+        assert sum(SNset == 4) < 30 # Just checking that SNset 4 is HST SNe
+
+        the_pos = 0
+        for id in unique(SNset):
             minz = (zcmb[where(SNset == id)]).min()
             maxz = (zcmb[where(SNset == id)]).max()
             dz = maxz - minz
 
             if id < 4:
-                redshift_coeffs[:,2*i] = (SNset == id)*(maxz - zcmb)/dz
-                redshift_coeffs[:,2*i+1] = (SNset == id)*(zcmb - minz)/dz
+                for j in range(npersample):
+                    yvals = zeros(npersample, dtype=float64)
+                    yvals[j] = 1.
+
+                    ifn = interp1d(linspace(minz - 1e-8, maxz + 1e-8, npersample), yvals, kind = 'linear', fill_value = 0, bounds_error = False)
+                    redshift_coeffs[:,the_pos] = (SNset == id)*ifn(zcmb)
+                    the_pos += 1
             else:
-                redshift_coeffs[:,2*i] = (SNset == id)
+                redshift_coeffs[:,the_pos] = (SNset == id)
+                the_pos += 1
+
     return redshift_coeffs
 
         
@@ -54,6 +65,10 @@ popmodel = int(sys.argv[2]) # 1 = const, 2 = const by sample, 3 = linear by samp
 nMCMCchains = int(sys.argv[3])
 nMCMCsamples = int(sys.argv[4])
 
+if len(sys.argv) == 6:
+    min_Om = float(sys.argv[5])
+else:
+    min_Om = 0.
 
 [NA, zcmb, zhel, dz, mb, dmb, x1, dx1, color, dcolor, mass, dmass, cov_m_s, cov_m_c, cov_s_c, SNset] = readcol("../covmat/jla_lcparams.txt", 'a,fff,ff,ff,ff,ff,fff,i')
 [sigma_coh, sigma_lens, sigma_z] = readcol("../covmat/sigma_mu.txt", 'fff')
@@ -109,7 +124,7 @@ stan_data = dict(n_sne = nsne, n_calib = d_mBx1c_dsys.shape[2], nzadd = nzadd, n
                  obs_mBx1c = obs_mBx1c, obs_mBx1c_cov = obs_mBx1c_cov,
                  d_mBx1c_d_calib = d_mBx1c_dsys,
                  obs_mass = mass, obs_dmass = dmass,
-                 cosmomodel = cosmomodel)
+                 cosmomodel = cosmomodel, min_Om = min_Om)
 
 plt.subplot(2,1,1)
 plt.hist(mass)

@@ -43,6 +43,7 @@ data {
     int unsort_inds[n_sne + nzadd]; // For converting to SN index.
 
     int cosmomodel; // 1 = Omega_m/Omega_L, 2 = Flat
+    real min_Om;
 }
 
 parameters {
@@ -50,7 +51,7 @@ parameters {
     real beta;
     real delta;
 
-    real <lower = 0> Om;
+    real <lower = min_Om> Om;
     real OL;
     
 
@@ -87,7 +88,13 @@ transformed parameters {
 
     // -------------Begin numerical integration-----------------
 
-    Ok <- 1. - Om - OL;
+    if (cosmomodel == 1) {
+        Ok <- 1. - Om - OL;
+    }
+
+    if (cosmomodel == 2) {
+        Ok <- 0.;
+    }
 
     if (cosmomodel == 1) {
         Hinv_sort_fill <- vecpow(Om*vecpow(1. + redshifts_sort_fill, 3.) + OL + Ok*vecpow(1. + redshifts_sort_fill, 2.), -0.5);
