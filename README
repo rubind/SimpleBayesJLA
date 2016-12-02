@@ -1,0 +1,17 @@
+This includes code to run for sampling from the Joint Lightcurve Analysis dataset (http://adsabs.harvard.edu/cgi-bin/bib_query?arXiv:1401.4064). If you use it, please cite http://adsabs.harvard.edu/cgi-bin/bib_query?arXiv:1610.08972 (MIT license blah, blah, blah).
+
+After cloning this repo, download http://supernovae.in2p3.fr/sdss_snls_jla/covmat_v6.tgz and http://supernovae.in2p3.fr/sdss_snls_jla/jla_likelihood_v6.tgz and extract.
+
+To have everything in one place: cp jla_likelihood_v6/data/jla_lcparams.txt covmat
+
+Now, enter the covmat directory and run python Step1_convert_stat.py (should make C_stat_new.fits) and python Step2_eigen.py (should make d_mBx1c_dsys.fits).
+
+Now make a directory (with an informative name) in SimpleBayesJLA. From this directory, you can run the "read_and_sample.py" The command line options are integers:
+
+cosmomodel = int(sys.argv[1]) # 1 = Om/OL, 2 = FlatLCDM, 3 = q0-j0, 4 = Om-w                                                                 
+popmodel = int(sys.argv[2]) # 1 = const, 2 = const by sample, 3 = linear by sample
+hostmass = int(sys.argv[3])
+nMCMCchains = int(sys.argv[4])
+nMCMCsamples = int(sys.argv[5])
+
+e.g., python ../read_and_sample.py 2 3 1 4 5000 to sample a flat LCDM cosmology with redshift-dependent population distributions and the host-mass relation enabled. Note that Stan uses half the chain as warmup by default (so we'll get 4*5000/2 = 10000 samples from this).
