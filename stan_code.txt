@@ -29,6 +29,7 @@ data {
     int n_x1c_star; // Number of redshift nodes per sample
 
     vector <lower=0> [n_sne] zhelio; // The redshift for each SN. Union2.1 used z_CMB, but this could be improved
+    vector <lower=0> [n_sne] zcmb; // The redshift for each SN. Union2.1 used z_CMB, but this could be improved
     matrix [n_sne, n_x1c_star] redshift_coeffs; // How each SN depends on each node.
 
 
@@ -42,7 +43,8 @@ data {
     vector [2*(n_sne + nzadd) - 1] redshifts_sort_fill; // Each SN redshift is a point for Simpson's rule. Fill in with intermediate points.
     int unsort_inds[n_sne + nzadd]; // For converting to SN index.
 
-    int cosmomodel; // 1 = Omega_m/Omega_L, 2 = Flat
+    int cosmomodel; // 1 = Omega_m/Omega_L, 2 = Flat, 3 = q0 j0, 4 = Om w
+    int host_mass_relation; // 1 = include host mass
     real min_Om;
 }
 
@@ -54,10 +56,14 @@ parameters {
     real <lower = min_Om> Om;
     real OL;
     
+    
+    real q0;
+    real j0;
 
     real <lower = 0> sigma_M0;
     real <lower = 0> sigma_x10;
     real <lower = 0> sigma_c0;
+
 
     real M0;
     vector [n_x1c_star] x10;
@@ -86,32 +92,49 @@ transformed parameters {
     vector [n_sne] x10_by_SN;
     vector [n_sne] c0_by_SN;
 
+    
+    
+
     // -------------Begin numerical integration-----------------
 
-    if (cosmomodel == 1) {
-        Ok <- 1. - Om - OL;
-    }
+    if (cosmomodel == 3) {
+        for (i in 1:n_sne) {
+            model_mu[i] <- 5.*log10((1. + zhelio[i])*zcmb[i]/(1. + zcmb[i]) * (1. + (1./2.)*(1 - q0)*zcmb[i] - (1./6.)*(1. - q0 - 3.*q0*q0 + j0) * zcmb[i]*zcmb[i]                   )) + 43.1586133146;
+        }
+    } else {
 
-    if (cosmomodel == 2) {
-        Ok <- 0.;
-    }
+        if (cosmomodel == 1) {
+            Ok <- 1. - Om - OL;
+        }
 
-    if (cosmomodel == 1) {
-        Hinv_sort_fill <- vecpow(Om*vecpow(1. + redshifts_sort_fill, 3.) + OL + Ok*vecpow(1. + redshifts_sort_fill, 2.), -0.5);
-    }
-    if (cosmomodel == 2) {
-        Hinv_sort_fill <- vecpow(Om*vecpow(1. + redshifts_sort_fill, 3.) + (1. - Om), -0.5);
-    }
+        if (cosmomodel == 2) {
+            Ok <- 0.;
+        }
 
-    r_com_sort[1] <- 0.; // Redshift = 0 should be first element!
-    for (i in 2:(n_sne + nzadd)) {
-        r_com_sort[i] <- r_com_sort[i - 1] + (Hinv_sort_fill[2*i - 3] + 4.*Hinv_sort_fill[2*i - 2] + Hinv_sort_fill[2*i - 1])*(redshifts_sort_fill[2*i - 1] - redshifts_sort_fill[2*i - 3])/6.;
-    }
+        if (cosmomodel == 4) {
+            Ok <- 0.;
+        }
 
-    r_com_sort <- sinn(r_com_sort, Ok, n_sne + nzadd);
+        if (cosmomodel == 1) {
+            Hinv_sort_fill <- vecpow(Om*vecpow(1. + redshifts_sort_fill, 3.) + OL + Ok*vecpow(1. + redshifts_sort_fill, 2.), -0.5);
+        }
+        if (cosmomodel == 2) {
+            Hinv_sort_fill <- vecpow(Om*vecpow(1. + redshifts_sort_fill, 3.) + (1. - Om), -0.5);
+        }
+	if (cosmomodel == 4) {
+            Hinv_sort_fill <- vecpow(Om*vecpow(1. + redshifts_sort_fill, 3.) + (1. - Om)*vecpow(1. + redshifts_sort_fill, 3.*(1 + OL)), -0.5);
+        }
 
-    for (i in 1:n_sne) {
-        model_mu[i] <- 5.*log10((1. + zhelio[i])*r_com_sort[unsort_inds[i] + 1]) + 43.1586133146; // Heliocentric is correct here
+        r_com_sort[1] <- 0.; // Redshift = 0 should be first element!
+        for (i in 2:(n_sne + nzadd)) {
+            r_com_sort[i] <- r_com_sort[i - 1] + (Hinv_sort_fill[2*i - 3] + 4.*Hinv_sort_fill[2*i - 2] + Hinv_sort_fill[2*i - 1])*(redshifts_sort_fill[2*i - 1] - redshifts_sort_fill[2*i - 3])/6.;
+        }
+
+        r_com_sort <- sinn(r_com_sort, Ok, n_sne + nzadd);
+
+        for (i in 1:n_sne) {
+            model_mu[i] <- 5.*log10((1. + zhelio[i])*r_com_sort[unsort_inds[i] + 1]) + 43.1586133146; // Heliocentric is correct here
+        }
     }
 
     // -------------End numerical integration---------------
@@ -124,7 +147,7 @@ transformed parameters {
     for (i in 1:n_sne) {
 
 	// Building the model of the observations
-        model_mBx1c[i][1] <- -(alpha*true_x1[i] - beta*true_c[i] - M0 - model_mu[i] + delta*normal_cdf(obs_mass[i], 10, obs_dmass[i]));
+        model_mBx1c[i][1] <- -(alpha*true_x1[i] - beta*true_c[i] - M0 - model_mu[i] + delta*host_mass_relation*normal_cdf(obs_mass[i], 10, obs_dmass[i]));
         model_mBx1c[i][2] <- true_x1[i];
         model_mBx1c[i][3] <- true_c[i];
 
@@ -152,4 +175,15 @@ model {
         OL ~ normal(0, 0.01);
     }
 
+    if (cosmomodel == 3) {
+        Om ~ normal(0, 0.01);
+        OL ~ normal(0, 0.01);
+    } else {
+        q0 ~ normal(0, 0.01);
+        j0 ~ normal(0, 0.01);
+    }
+
+    if (host_mass_relation == 0) {
+        delta ~ normal(0, 1);
+    }
 }
