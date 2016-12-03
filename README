@@ -3,6 +3,7 @@ This includes code to run for sampling from the Joint Lightcurve Analysis datase
 After cloning this repo, download http://supernovae.in2p3.fr/sdss_snls_jla/covmat_v6.tgz and http://supernovae.in2p3.fr/sdss_snls_jla/jla_likelihood_v6.tgz and extract.
 
 To have everything in one place: cp jla_likelihood_v6/data/jla_lcparams.txt covmat
+(Data and code in the same place?!)
 
 Now, enter the covmat directory and run python Step1_convert_stat.py (should make C_stat_new.fits) and python Step2_eigen.py (should make d_mBx1c_dsys.fits).
 
