@@ -16,3 +16,8 @@ nMCMCchains = int(sys.argv[4])
 nMCMCsamples = int(sys.argv[5])
 
 e.g., python ../read_and_sample.py 2 3 1 4 5000 to sample a flat LCDM cosmology with redshift-dependent x1/c distributions and the host-mass relation enabled. Note that Stan uses half the chain as warmup by default (so we'll get 4*5000/2 = 10000 samples from this).
+
+This creates "results.pickle," which can be read as a Python pickle:
+stan_data, fit_params = pickle.load(open("results.pickle", 'rb'))
+
+"fit_params" is a dictionary with the samples, e.g., median(fit_params["Om"])
