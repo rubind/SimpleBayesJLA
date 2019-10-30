@@ -4,7 +4,7 @@ from numpy import *
 from matplotlib import use
 use("PDF")
 import matplotlib.pyplot as plt
-import pyfits
+from astropy.io import fits
 import sys
 from scipy.interpolate import interp1d
 import time
@@ -13,8 +13,8 @@ import subprocess
 
 def save_img(dat, imname):
     subprocess.getoutput("rm -f " + imname)
-    fitsobj = pyfits.HDUList()
-    hdu = pyfits.PrimaryHDU()
+    fitsobj = fits.HDUList()
+    hdu = fits.PrimaryHDU()
     hdu.data = dat
     fitsobj.append(hdu)
     fitsobj.writeto(imname)
@@ -145,7 +145,7 @@ plt.plot(lcparams["zcmb"], dmb, '.')
 plt.savefig("dmb_vs_z.pdf")
 plt.close()
 
-f = pyfits.open("../covmat/d_mBx1c_dsys.fits")
+f = fits.open("../covmat/d_mBx1c_dsys.fits")
 d_mBx1c_dsys = f[0].data
 f.close()
 
