@@ -1,5 +1,5 @@
 import pystan
-import cPickle as pickle
+import pickle as pickle
 from numpy import *
 from matplotlib import use
 use("PDF")
@@ -9,10 +9,10 @@ import sys
 from scipy.interpolate import interp1d
 import time
 import astropy.io.ascii as ascii
-import commands
+import subprocess
 
 def save_img(dat, imname):
-    commands.getoutput("rm -f " + imname)
+    subprocess.getoutput("rm -f " + imname)
     fitsobj = pyfits.HDUList()
     hdu = pyfits.PrimaryHDU()
     hdu.data = dat
@@ -153,7 +153,7 @@ d_mBx1c_dsys = transpose(d_mBx1c_dsys, axes = [1, 2, 0])
 
 
 
-print d_mBx1c_dsys.shape
+print(d_mBx1c_dsys.shape)
 
 
 nsne = len(lcparams["zcmb"])
@@ -199,18 +199,18 @@ plt.hist(lcparams["d3rdvar"], bins = 20)
 plt.savefig("mass.pdf")
 plt.close()
 
-print "Ready to sample", time.asctime()
+print("Ready to sample", time.asctime())
 
 fit = pystan.stan(file = "../stan_code.txt", data=stan_data,
                   iter=nMCMCsamples, chains=nMCMCchains, n_jobs = nMCMCchains, refresh = min(100, nMCMCsamples/20), init = initfn)
 
-print "Done with sampling", time.asctime()
-print fit
-print "Done with printing", time.asctime()
+print("Done with sampling", time.asctime())
+print(fit)
+print("Done with printing", time.asctime())
 
 fit_params = fit.extract(permuted = True)
 
-print "Done with extracting", time.asctime()
+print("Done with extracting", time.asctime())
 
 pickle.dump((stan_data, fit_params), open("results.pickle", 'wb'))
-print "Done!", time.asctime()
+print("Done!", time.asctime())
