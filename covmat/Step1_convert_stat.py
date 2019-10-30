@@ -1,12 +1,12 @@
 from numpy import *
-import pyfits
+from astropy.io import fits
 import astropy.io.ascii as ascii
-import commands
+import subprocess
 
 def save_img(dat, imname):
-    commands.getoutput("rm -f " + imname)
-    fitsobj = pyfits.HDUList()
-    hdu = pyfits.PrimaryHDU()
+    subprocess.getoutput("rm -f " + imname)
+    fitsobj = fits.HDUList()
+    hdu = fits.PrimaryHDU()
     hdu.data = dat
     fitsobj.append(hdu)
     fitsobj.writeto(imname)
@@ -19,7 +19,7 @@ sigmamu = ascii.read("sigma_mu.txt", names = ["sigma_coh", "sigma_lens", "z"])
 
 
 
-f = pyfits.open("C_stat.fits")
+f = fits.open("C_stat.fits")
 dat = f[0].data
 f.close()
 

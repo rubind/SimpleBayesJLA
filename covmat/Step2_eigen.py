@@ -1,12 +1,12 @@
 from numpy import *
 import glob
-import pyfits
-import commands
+from astropy.io import fits
+import subprocess
 
 def save_img(dat, imname):
-    commands.getoutput("rm -f " + imname)
-    fitsobj = pyfits.HDUList()
-    hdu = pyfits.PrimaryHDU()
+    subprocess.getoutput("rm -f " + imname)
+    fitsobj = fits.HDUList()
+    hdu = fits.PrimaryHDU()
     hdu.data = dat
     fitsobj.append(hdu)
     fitsobj.writeto(imname)
@@ -19,8 +19,8 @@ nsne = 740
 
 for fl in glob.glob("C*fits"):
     if (fl.count("stat") == 0) or fl == "C_stat_new.fits":
-        print fl
-        f = pyfits.open(fl)
+        print(fl)
+        f = fits.open(fl)
         dat = f[0].data
         f.close()
         
@@ -39,7 +39,7 @@ for fl in glob.glob("C*fits"):
                     d_mBx1c_dsys[-1].append((evecs[ind]*sqrt(evals[ind]))[i*3:(i+1)*3])
 
 d_mBx1c_dsys = array(d_mBx1c_dsys)
-print d_mBx1c_dsys.shape
+print(d_mBx1c_dsys.shape)
 
 save_img(d_mBx1c_dsys, "d_mBx1c_dsys.fits")
 
