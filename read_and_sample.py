@@ -283,13 +283,12 @@ else:
             print("Deleting ", key)
             fit_params[key] = array([], dtype=float64)
 
-<<<<<<< HEAD
+
 if args.savestan:
     pass
 else:
     stan_data = {}
 
-=======
->>>>>>> 3a84706a8f2f253db613cef92c9f4619e0f5fd19
+
 pickle.dump((stan_data, fit_params), open("results.pickle", 'wb'))
 print("Done!", time.asctime())
