@@ -38,12 +38,13 @@ data {
     matrix[3, n_calib] d_mBx1c_d_calib [n_sne]; // Sensitivity of each SN to each distance systematic
     vector [n_sne] obs_mass;
     vector [n_sne] obs_dmass;
+    vector [n_sne] dot_CMB;
 
     int nzadd; // Integrating comoving distance using Simpson's rule. Add these redshifts to make sure that we have good sampling in redshift.  
     vector [2*(n_sne + nzadd) - 1] redshifts_sort_fill; // Each SN redshift is a point for Simpson's rule. Fill in with intermediate points.
     int unsort_inds[n_sne + nzadd]; // For converting to SN index.
 
-    int cosmomodel; // 1 = Omega_m/Omega_L, 2 = Flat, 3 = q0 j0, 4 = Om w
+    int cosmomodel; // 1 = Omega_m/Omega_L, 2 = Flat, 3 = q0 j0, 4 = Om wm, 5 = q0d q0m j0
     int host_mass_relation; // 1 = include host mass
     real min_Om;
 }
@@ -59,6 +60,10 @@ parameters {
     
     real q0;
     real j0;
+
+    real q0m;
+    real q0d;
+    real <lower = 0.02, upper = 0.03> S;
 
     real <lower = 0> sigma_M0;
     real <lower = 0> sigma_x10;
@@ -91,6 +96,7 @@ transformed parameters {
 
     vector [n_sne] x10_by_SN;
     vector [n_sne] c0_by_SN;
+    real q0_for_SN;
 
     
     
@@ -101,6 +107,12 @@ transformed parameters {
         for (i in 1:n_sne) {
             model_mu[i] <- 5.*log10((1. + zhelio[i])*zcmb[i]/(1. + zcmb[i]) * (1. + (1./2.)*(1 - q0)*zcmb[i] - (1./6.)*(1. - q0 - 3.*q0*q0 + j0) * zcmb[i]*zcmb[i]                   )) + 43.1586133146;
         }
+    } else if (cosmomodel == 5) {
+        for (i in 1:n_sne) {
+	    q0_for_SN = q0m + q0d * dot_CMB[i] * exp(-zcmb[i]/S);
+            model_mu[i] <- 5.*log10((1. + zhelio[i])*zcmb[i]/(1. + zcmb[i]) * (1. + (1./2.)*(1 - q0_for_SN)*zcmb[i] - (1./6.)*(1. - q0_for_SN - 3.*q0_for_SN*q0_for_SN + j0) * zcmb[i]*zcmb[i]                   )) + 43.1586133146;
+        }
+
     } else {
 
         if (cosmomodel == 1) {
@@ -170,6 +182,15 @@ model {
 
     calibs ~ normal(0, 1);
 
+    // 1 = Omega_m/Omega_L, 2 = Flat, 3 = q0 j0, 4 = Om wm, 5 = q0d q0m j0
+    
+    if ((cosmomodel == 1) || (cosmomodel == 2) || (cosmomodel == 4)) {
+        q0 ~ normal(0, 0.01);
+        j0 ~ normal(0, 0.01);
+        q0m ~ normal(0, 0.01);
+        q0d ~ normal(0, 0.01);
+    }
+
     if (cosmomodel == 2) {
         // Flat universe
         OL ~ normal(0, 0.01);
@@ -178,9 +199,14 @@ model {
     if (cosmomodel == 3) {
         Om ~ normal(0, 0.01);
         OL ~ normal(0, 0.01);
-    } else {
+        q0m ~ normal(0, 0.01);
+        q0d ~ normal(0, 0.01);
+    }
+
+    if (cosmomodel == 5) {
+        Om ~ normal(0, 0.01);
+        OL ~ normal(0, 0.01);
         q0 ~ normal(0, 0.01);
-        j0 ~ normal(0, 0.01);
     }
 
     if (host_mass_relation == 0) {
