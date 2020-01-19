@@ -5,19 +5,33 @@ After cloning this repo, download http://supernovae.in2p3.fr/sdss_snls_jla/covma
 To have everything in one place: cp jla_likelihood_v6/data/jla_lcparams.txt covmat
 (Data and code in the same place?!)
 
-Now, enter the covmat directory and run python Step1_convert_stat.py (should make C_stat_new.fits) and python Step2_eigen.py (should make d_mBx1c_dsys.fits).
+Now, enter the covmat directory and run python Step1_convert_stat.py (should make C_stat_new.fits) and python Step2_eigen.py (should make d_mBx1c_dsys_pecvel=0.fits and _pecvel=1.fits).
 
-Now make a directory (with an informative name) in SimpleBayesJLA. From this directory, you can run the "read_and_sample.py" The command line options are integers:
+Now make a directory (with an informative name) in SimpleBayesJLA. From this directory, you can run the "read_and_sample.py" The command line options given with --help:
 
-cosmomodel = int(sys.argv[1]) # 1 = Om/OL, 2 = FlatLCDM, 3 = q0-j0, 4 = Om-w                                                                 
-popmodel = int(sys.argv[2]) # 1 = const, 2 = const by sample, 3 = linear by sample
-hostmass = int(sys.argv[3])
-nMCMCchains = int(sys.argv[4])
-nMCMCsamples = int(sys.argv[5])
+  --cosmomodel COSMOMODEL
+                        1 = Om/OL, 2 = FlatLCDM, 3 = q0/j0, 4 = q0m/q0d/j0
+  --popmodel POPMODEL   0 = z, z^2, 1 = const, 2 = const by sample, 3 = linear
+                        by sample
+  --hostmass HOSTMASS   host mass? 1 = yes, 0 = no
+  --includepecvelcov INCLUDEPECVELCOV
+                        include peculiar velocity covariance matrix? 1 = yes,
+                        0 = no
+  --ztype ZTYPE         redshift type to use for comoving distance.
+                        zcmbpecvel, zcmb, or zhelio
+  --nMCMCchains NMCMCCHAINS
+                        number of chains to run
+  --nMCMCsamples NMCMCSAMPLES
+                        number of samples per chain; first half is discarded
+  --min_Om MIN_OM       minimum Omega_m
+  --saveperSN SAVEPERSN
+                        Save per-SN parameters in pickle file?
 
-e.g., python ../read_and_sample.py 2 3 1 4 5000 to sample a flat LCDM cosmology with redshift-dependent x1/c distributions and the host-mass relation enabled. Note that Stan uses half the chain as warmup by default (so we'll get 4*5000/2 = 10000 samples from this).
+
+e.g., python ../read_and_sample.py --cosmomodel 2 --popmodel 3 --hostmass 1 --includepecvelcov 1 --ztype zcmbpecvel --nMCMCchains 4 --nMCMCsamples 5000 --saveperSN 0
+to sample a flat LCDM cosmology with redshift-dependent x1/c distributions and the host-mass relation enabled. Note that Stan uses half the chain as warmup by default (so we'll get 4*5000/2 = 10000 samples from this).
 
 This creates "results.pickle," which can be read as a Python pickle:
 stan_data, fit_params = pickle.load(open("results.pickle", 'rb'))
 
-"fit_params" is a dictionary with the samples, e.g., median(fit_params["Om"])
+"fit_params" is a dictionary with the samples, e.g., np.median(fit_params["Om"])

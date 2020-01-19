@@ -184,6 +184,7 @@ parser.add_argument("--min_Om", type=float, help="minimum Omega_m", default = 0)
 parser.add_argument("--saveperSN", type=int, help="Save per-SN parameters in pickle file?", default = 1)
 parser.add_argument("--savestan", type=int, help="Save Stan data in pickle", default = 1)
 
+
 args = parser.parse_args()
 print("args ", args)
 
@@ -282,10 +283,13 @@ else:
             print("Deleting ", key)
             fit_params[key] = array([], dtype=float64)
 
+<<<<<<< HEAD
 if args.savestan:
     pass
 else:
     stan_data = {}
 
+=======
+>>>>>>> 3a84706a8f2f253db613cef92c9f4619e0f5fd19
 pickle.dump((stan_data, fit_params), open("results.pickle", 'wb'))
 print("Done!", time.asctime())
